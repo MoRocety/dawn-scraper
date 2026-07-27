@@ -158,7 +158,7 @@ class DawnScraper:
             resp = self._fetch(url)
             if not resp:
                 return ds, label, set()
-            soup = BeautifulSoup(resp.text, "lxml")
+            soup = BeautifulSoup(resp.text, "html.parser")
             return ds, label, self._extract_article_urls(soup)
 
         with ThreadPoolExecutor(max_workers=1) as ex:
