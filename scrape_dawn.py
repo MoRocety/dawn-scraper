@@ -239,6 +239,8 @@ def main():
                    help="Cap articles scraped per day (0 = unlimited, for testing)")
     p.add_argument("--suffix", default="",
                    help="Suffix for cache filenames (for parallel runs)")
+    p.add_argument("--retry-failed", action="store_true",
+                   help="Re-scrape all entries in cache/failed.json")
     args = p.parse_args()
 
     scraper = DawnScraper(proxy=args.proxy, suffix=args.suffix,
