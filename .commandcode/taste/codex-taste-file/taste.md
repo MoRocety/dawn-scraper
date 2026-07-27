@@ -1,0 +1,10 @@
+# Codex Taste File
+- Prefers exploring and verifying (e.g., checking URLs, confirming data structures) before implementing a solution, rather than jumping straight into building. Confidence: 0.85
+- Prefers aggressive parallelism and throughput for IO/network-bound tasks — pushes worker counts and minimizes delays rather than accepting conservative defaults. Confidence: 0.85
+- Prefers empirical benchmarking with a representative subset before committing to long-running full-scale operations — test a few slices/days, measure speedup, extrapolate, then launch the full run. Confidence: 0.8
+- Values resilience and checkpointing for long-running jobs — wants tasks to survive interruptions and be resumable from where they left off rather than restarting from scratch. Confidence: 0.8
+- Prefers left-aligned text layout in visual output (e.g., PDFs, reports) — content should flow from the left margin, not be centered or right-aligned, with elements like bylines placed directly below their parent heading. Confidence: 0.75
+- Prefers process isolation and separate per-worker resources in parallel/distributed architectures — values correctness and simplicity (no shared mutable state, no write conflicts) over deduplication or micro-optimization. Confidence: 0.8
+- Prefers embarrassingly parallel partitioning by the natural independent unit (e.g., date ranges) rather than by internal structure (e.g., sections) — each worker should be a self-contained pipeline that produces finished, complete outputs without requiring a post-processing merge step. Confidence: 0.85
+- When partitioning work across parallel processes, expects roughly equal workload distribution — balanced chunk sizes so all workers carry a similar share rather than one process being disproportionately large. Confidence: 0.8
+- Wants operational transparency for long-running tasks — expects estimated time remaining, current progress/status, and explicit instructions for how to monitor (e.g., which log files to tail, what completion looks like). Confidence: 0.75

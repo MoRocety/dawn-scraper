@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Shell(pip3:*)",
+      "Shell(rm:*)",
+      "Shell(python3 scrape_dawn.py --start 2026-07-25 --end 2026-07-27 --delay 0.3 --workers 4 2 >& 1)",
+      "Shell(python3 -c  import requests from bs4 import BeautifulSoup resp = requests.get('https://www.dawn.com/newspaper/front-page/2026-07-27', headers={'User-Agent': 'Mozilla/5.0'}) soup = BeautifulSoup(resp.text, 'lxml') # Check for article links articles = soup.select('article h2 a') print(f'article h2 a: {len(articles)}') # Check for any /news/ links all_links = soup.find_all('a', href=True) news_links = [a['href'] for a in all_links if '/news/' in a['href']] print(f'/news/ links: {len(news_links)}') print('Sample:', news_links[:5])  2 >& 1)",
+      "Shell(python3 scrape_dawn.py --start 2026-07-27 --end 2026-07-27 --delay 0.0 --workers 15 2 >& 1)"
+    ],
+    "deny": [],
+    "defaultMode": "default"
+  }
+}

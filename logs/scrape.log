@@ -1,0 +1,11 @@
+01:11:05  INFO  Dawn Scraper: 2025-01-01 → 2025-04-30 (120 days, AIMD congestion control, no proxy)
+Processing days:   0%|          | 0/120 [00:00<?, ?it/s]Processing days:   0%|          | 0/120 [00:00<?, ?it/s, collecting 2025-01-01]01:11:05  INFO  Collecting 29 sections × 1 days = 29 pages
+
+Collecting URLs:   0%|          | 0/29 [00:00<?, ?it/s][A
+Collecting URLs:   3%|▎         | 1/29 [00:01<00:55,  1.98s/it][A
+Collecting URLs:   7%|▋         | 2/29 [00:03<00:40,  1.50s/it][A
+Collecting URLs:  10%|█         | 3/29 [00:11<01:59,  4.59s/it][A
+Collecting URLs:  14%|█▍        | 4/29 [00:15<01:47,  4.28s/it][A
+Collecting URLs:  17%|█▋        | 5/29 [00:18<01:37,  4.05s/it][A
+Collecting URLs:  21%|██        | 6/29 [00:22<01:30,  3.92s/it][A/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/multiprocessing/resource_tracker.py:216: UserWarning: resource_tracker: There appear to be 1 leaked semaphore objects to clean up at shutdown
+  warnings.warn('resource_tracker: There appear to be %d '
