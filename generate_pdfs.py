@@ -208,10 +208,10 @@ def main():
     if args.merge:
         articles = {}
         sections = {}
-        for af in sorted(glob.glob(f"{CACHE_DIR}/articles_*.json")):
-            pid = af.split("_")[-1].replace(".json", "")
+        for af in sorted(glob.glob(f"{CACHE_DIR}/articles*.json")):
             articles.update(load_json(af))
-            sf = f"{CACHE_DIR}/sections_{pid}.json"
+            # Derive sections filename from articles filename
+            sf = af.replace("articles", "sections")
             if os.path.exists(sf):
                 for ds, secs in load_json(sf).items():
                     if ds not in sections:
@@ -222,15 +222,16 @@ def main():
         articles = load_json(f"{CACHE_DIR}/articles_{args.pid}.json")
         sections = load_json(f"{CACHE_DIR}/sections_{args.pid}.json")
     else:
-        # Auto-detect: use the first articles file found
-        files = sorted(glob.glob(f"{CACHE_DIR}/articles_*.json"))
+        # Auto-detect
+        files = sorted(glob.glob(f"{CACHE_DIR}/articles*.json"))
         if not files:
             logger.error("No cache files found in %s/", CACHE_DIR)
             sys.exit(1)
-        pid = files[0].split("_")[-1].replace(".json", "")
-        logger.info(f"Auto-detected PID: {pid}")
-        articles = load_json(files[0])
-        sections = load_json(f"{CACHE_DIR}/sections_{pid}.json")
+        articles_file = files[0]
+        sections_file = articles_file.replace("articles", "sections")
+        logger.info(f"Using cache: {articles_file}")
+        articles = load_json(articles_file)
+        sections = load_json(sections_file) if os.path.exists(sections_file) else {}
 
     # Find date range
     all_dates = set()

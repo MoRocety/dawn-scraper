@@ -1,0 +1,86 @@
+name: Scrape Dawn Archives
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  scrape:
+    name: "Scrape batch ${{ matrix.batch }}"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        batch: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: pip install curl_cffi beautifulsoup4 tqdm
+
+      - name: Calculate date range
+        id: dates
+        run: |
+          # 573 days total, 20 batches = ~29 each. Compute start/end from batch index.
+          python3 -c "
+          from datetime import date, timedelta
+          start = date(2025, 1, 1)
+          chunks = 20
+          days_per = 574 // chunks + 1
+          batch = ${{ matrix.batch }}
+          batch_start = start + timedelta(days=batch * days_per)
+          batch_end = min(start + timedelta(days=(batch + 1) * days_per - 1), date(2026, 7, 27))
+          print(f'batch_start={batch_start}')
+          print(f'batch_end={batch_end}')
+          " >> $GITHUB_OUTPUT
+
+      - name: Scrape
+        timeout-minutes: 350
+        run: |
+          python3 scrape_dawn.py \
+            --start "${{ steps.dates.outputs.batch_start }}" \
+            --end "${{ steps.dates.outputs.batch_end }}" \
+            --suffix "job${{ matrix.batch }}"
+
+      - name: Upload cache
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cache-job${{ matrix.batch }}
+          path: |
+            cache/articles_job${{ matrix.batch }}.json
+            cache/sections_job${{ matrix.batch }}.json
+            cache/failed_job${{ matrix.batch }}.json
+
+  merge:
+    name: Merge all caches
+    needs: scrape
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install deps
+        run: pip install fpdf2 tqdm
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: cache-job*
+          merge-multiple: true
+          path: cache
+
+      - name: Generate PDFs
+        run: python3 generate_pdfs.py --merge --start 2025-01-01 --end 2026-07-27
+
+      - name: Upload PDFs
+        uses: actions/upload-artifact@v4
+        with:
+          name: dawn-newspapers
+          path: newspapers/

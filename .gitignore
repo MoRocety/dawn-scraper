@@ -1,0 +1,9 @@
+cache/
+newspapers/
+logs/
+__pycache__/
+*.pyc
+.DS_Store
+.commandcode/
+check.sh
+C_=1

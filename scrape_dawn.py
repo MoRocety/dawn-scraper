@@ -71,14 +71,15 @@ logger.setLevel(logging.INFO)
 # ══════════════════════════════════════════════════════════════════════════
 
 class DawnScraper:
-    def __init__(self, proxy=None):
+    def __init__(self, proxy=None, suffix=""):
         self.proxy = proxy
         self._lock = threading.Lock()
 
-        # Global cache files — no PID nonsense
-        self.cache_file = os.path.join(CACHE_DIR, "articles.json")
-        self.sections_file = os.path.join(CACHE_DIR, "sections.json")
-        self.failed_file = os.path.join(CACHE_DIR, "failed.json")
+        # Global cache files with optional suffix for parallel runs
+        sfx = f"_{suffix}" if suffix else ""
+        self.cache_file = os.path.join(CACHE_DIR, f"articles{sfx}.json")
+        self.sections_file = os.path.join(CACHE_DIR, f"sections{sfx}.json")
+        self.failed_file = os.path.join(CACHE_DIR, f"failed{sfx}.json")
 
         os.makedirs(CACHE_DIR, exist_ok=True)
         os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -267,9 +268,11 @@ def main():
                    help="Proxy URL (e.g. socks5://host:1080)")
     p.add_argument("--retry-failed", action="store_true",
                    help="Re-scrape all entries in cache/failed.json")
+    p.add_argument("--suffix", default="",
+                   help="Suffix for cache filenames (for parallel runs)")
     args = p.parse_args()
 
-    scraper = DawnScraper(proxy=args.proxy)
+    scraper = DawnScraper(proxy=args.proxy, suffix=args.suffix)
 
     if args.retry_failed:
         failed_urls = list(scraper.failed.keys())
