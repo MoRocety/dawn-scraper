@@ -297,7 +297,7 @@ def main():
 
         if urls_to_scrape:
             pbar.set_postfix_str(f"{len(urls_to_scrape)}/{len(day_urls)} for {ds}")
-            for url in urls_to_scrape:
+            for url in tqdm(urls_to_scrape, desc=f"  {ds}"):
                 scraper.scrape_article(url)
             # Progress per day is visible through the tqdm postfix
 
