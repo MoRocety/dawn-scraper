@@ -71,8 +71,9 @@ logger.setLevel(logging.INFO)
 # ══════════════════════════════════════════════════════════════════════════
 
 class DawnScraper:
-    def __init__(self, proxy=None, suffix=""):
+    def __init__(self, proxy=None, suffix="", max_per_day=0):
         self.proxy = proxy
+        self.max_per_day = max_per_day
         self._lock = threading.Lock()
 
         sfx = f"_{suffix}" if suffix else ""
@@ -242,13 +243,14 @@ def main():
     p.add_argument("--end", default=str(END_DATE))
     p.add_argument("--proxy", default=None,
                    help="Proxy URL (e.g. socks5://host:1080)")
-    p.add_argument("--retry-failed", action="store_true",
-                   help="Re-scrape all entries in cache/failed.json")
+    p.add_argument("--max-per-day", type=int, default=0,
+                   help="Cap articles scraped per day (0 = unlimited, for testing)")
     p.add_argument("--suffix", default="",
                    help="Suffix for cache filenames (for parallel runs)")
     args = p.parse_args()
 
-    scraper = DawnScraper(proxy=args.proxy, suffix=args.suffix)
+    scraper = DawnScraper(proxy=args.proxy, suffix=args.suffix,
+                          max_per_day=args.max_per_day)
 
     if args.retry_failed:
         failed_urls = list(scraper.failed.keys())
@@ -295,6 +297,9 @@ def main():
         # ── Scrape ──
         urls_to_scrape = [u for u in day_urls
                           if u not in scraper.articles or "body" not in scraper.articles[u]]
+
+        if scraper.max_per_day and len(urls_to_scrape) > scraper.max_per_day:
+            urls_to_scrape = urls_to_scrape[:scraper.max_per_day]
 
         if urls_to_scrape:
             pbar.set_postfix_str(f"{len(urls_to_scrape)}/{len(day_urls)} for {ds}")

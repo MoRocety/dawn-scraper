@@ -1,0 +1,52 @@
+name: Diagnostic — test Dawn response
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install deps
+        run: pip install curl_cffi beautifulsoup4
+      - name: Test request
+        run: |
+          python3 -c "
+          from curl_cffi import requests
+          from bs4 import BeautifulSoup
+          import json
+
+          r = requests.get('https://www.dawn.com/newspaper/front-page/2025-07-23',
+                           impersonate='chrome120', timeout=15)
+          print(f'Status: {r.status_code}')
+          print(f'Size: {len(r.text)}')
+          soup = BeautifulSoup(r.text, 'lxml')
+          links = soup.select('article.story h2 a[href]')
+          news_links = [l['href'] for l in links if '/news/' in l.get('href','')]
+          print(f'Found {len(news_links)} article links')
+
+          # Save first 2KB for inspection
+          with open('response.html', 'w') as f:
+              f.write(r.text[:5000])
+          # Also save as artifact
+          with open('diagnostic.json', 'w') as f:
+              json.dump({
+                  'status': r.status_code,
+                  'size': len(r.text),
+                  'links_found': len(news_links),
+                  'has_article_story': 'article.story' in r.text,
+                  'has_news': '/news/' in r.text,
+                  'first_1000': r.text[:1000]
+              }, f, indent=2)
+          "
+      - name: Upload diagnostic
+        uses: actions/upload-artifact@v4
+        with:
+          name: diagnostic
+          path: |
+            response.html
+            diagnostic.json
