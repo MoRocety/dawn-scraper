@@ -219,6 +219,7 @@ class DawnScraper:
         return article
 
     def _track_failure(self, url):
+        logger.warning("FAILED: %s", url[-80:])
         self.failed[url] = {
             "attempts": self.failed.get(url, {}).get("attempts", 0) + 1,
             "last_try": datetime.now().isoformat(),
