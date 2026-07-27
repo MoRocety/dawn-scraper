@@ -67,7 +67,7 @@ logger.setLevel(logging.INFO)
 
 
 # ══════════════════════════════════════════════════════════════════════════
-#  AIMD Congestion-Controlled Scraper
+#  Steady-pace Scraper — short backoff, aggressive retry. No learning.
 # ══════════════════════════════════════════════════════════════════════════
 
 class DawnScraper:
@@ -75,7 +75,6 @@ class DawnScraper:
         self.proxy = proxy
         self._lock = threading.Lock()
 
-        # Global cache files with optional suffix for parallel runs
         sfx = f"_{suffix}" if suffix else ""
         self.cache_file = os.path.join(CACHE_DIR, f"articles{sfx}.json")
         self.sections_file = os.path.join(CACHE_DIR, f"sections{sfx}.json")
@@ -87,12 +86,6 @@ class DawnScraper:
         self.articles = self._load(self.cache_file)
         self.sections = self._load(self.sections_file)
         self.failed = self._load(self.failed_file)
-
-        # AIMD congestion window — starts wide, tightens on 429, expands on success
-        self.delay = 0.0          # current inter-request delay
-        self.delay_min = 0.0      # floor
-        self.delay_max = 10.0     # ceiling
-        self.delay_step = 0.05    # additive increase increment
 
     def _load(self, path):
         return json.load(open(path)) if os.path.exists(path) else {}
@@ -111,48 +104,28 @@ class DawnScraper:
     def _save_failed(self):
         self._save(self.failed_file, self.failed)
 
-    # ── AIMD rate control ────────────────────────────────────────────
-
-    def _throttle(self):
-        """Enforce inter-request delay — the AIMD congestion window."""
-        if self.delay <= 0:
-            return
-        time.sleep(self.delay)
-
-    def _on_success(self):
-        """Additive increase: reduce delay slightly on each 200."""
-        self.delay = max(self.delay_min, self.delay - self.delay_step)
-
-    def _on_congestion(self):
-        """Multiplicative decrease: double delay on 429/403."""
-        old = self.delay
-        self.delay = min(self.delay_max, max(0.3, self.delay * 2.0))
-        logger.debug(f"AIMD: {old:.2f}s → {self.delay:.2f}s (429)")
-
     # ── network ──────────────────────────────────────────────────────
 
     def _fetch(self, url, timeout=15):
-        for attempt in range(20):  # many retries — AIMD handles pacing
-            self._throttle()
+        """Simple retry: short backoff on 429/403, skip non-retryable."""
+        for attempt in range(20):
             impersonate = IMPERSONATIONS[attempt % len(IMPERSONATIONS)]
-
             try:
                 resp = requests.get(url, timeout=timeout,
                                     impersonate=impersonate, proxy=self.proxy)
 
                 if resp.status_code == 200:
-                    self._on_success()
                     return resp
 
                 if resp.status_code in (429, 403, 502, 503, 504):
-                    self._on_congestion()
+                    # Short fixed backoff + jitter
+                    time.sleep(0.5 + random.uniform(0, 0.5))
                     continue
 
-                # Non-retryable (404, 410, etc.)
-                return None
+                return None  # 404, 410, etc.
 
             except Exception:
-                self._on_congestion()
+                time.sleep(0.5)
                 continue
 
         return None
@@ -192,7 +165,7 @@ class DawnScraper:
             soup = BeautifulSoup(resp.text, "lxml")
             return ds, label, self._extract_article_urls(soup)
 
-        with ThreadPoolExecutor(max_workers=1) as ex:  # single worker = no race on AIMD
+        with ThreadPoolExecutor(max_workers=1) as ex:
             futures = {ex.submit(_fetch_one, t): t for t in url_tasks}
             for f in tqdm(as_completed(futures), total=len(futures), desc="Collecting URLs"):
                 try:
@@ -261,7 +234,7 @@ class DawnScraper:
 
 def main():
     import argparse
-    p = argparse.ArgumentParser(description="Dawn Scraper — AIMD congestion-controlled")
+    p = argparse.ArgumentParser(description="Dawn Scraper")
     p.add_argument("--start", default=str(START_DATE))
     p.add_argument("--end", default=str(END_DATE))
     p.add_argument("--proxy", default=None,
@@ -276,8 +249,7 @@ def main():
 
     if args.retry_failed:
         failed_urls = list(scraper.failed.keys())
-        logger.info(f"Retrying {len(failed_urls)} failed URLs with aggressive AIMD…")
-        scraper.delay = 2.0  # start conservative
+        logger.info(f"Retrying {len(failed_urls)} failed URLs…")
         for url in tqdm(failed_urls, desc="Retrying failed"):
             scraper.scrape_article(url)
         remaining = sum(1 for u in failed_urls if u in scraper.failed)
@@ -294,7 +266,7 @@ def main():
         current += timedelta(days=1)
 
     proxy_info = f"proxy {args.proxy}" if args.proxy else "no proxy"
-    logger.info(f"Dawn Scraper: {start_d} → {end_d} ({len(dates)} days, AIMD congestion control, {proxy_info})")
+    logger.info(f"Dawn Scraper: {start_d} → {end_d} ({len(dates)} days, {proxy_info})")
 
     for d in (pbar := tqdm(dates, desc="Processing days")):
         ds = d.strftime("%Y-%m-%d")
@@ -330,7 +302,7 @@ def main():
         # Show AIMD state in progress bar
         ok = sum(1 for u in day_urls if scraper.articles.get(u, {}).get("body"))
         total = len(day_urls) if day_urls else 1
-        pbar.set_postfix_str(f"{ok}/{total} {ds} delay={scraper.delay:.2f}s")
+        pbar.set_postfix_str(f"{ok}/{total} {ds}")
 
     # ── Summary ──
     total_ok = sum(1 for v in scraper.articles.values() if v.get("body"))
