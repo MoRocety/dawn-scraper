@@ -107,7 +107,7 @@ class DawnScraper:
     # ── network ──────────────────────────────────────────────────────
 
     def _fetch(self, url, timeout=15):
-        """Simple retry: short backoff on 429/403, skip non-retryable."""
+        """Exponential backoff on 429/403 — fast initial retry, longer waits if persistent."""
         for attempt in range(20):
             impersonate = IMPERSONATIONS[attempt % len(IMPERSONATIONS)]
             try:
@@ -118,14 +118,17 @@ class DawnScraper:
                     return resp
 
                 if resp.status_code in (429, 403, 502, 503, 504):
-                    # Short fixed backoff + jitter
-                    time.sleep(0.5 + random.uniform(0, 0.5))
+                    wait = min(30, 0.5 * (2 ** attempt) + random.uniform(0, 0.5))
+                    logger.debug("Retry %d/%d %s — sleep %.1fs",
+                                 attempt + 1, 20, resp.status_code, wait)
+                    time.sleep(wait)
                     continue
 
                 return None  # 404, 410, etc.
 
             except Exception:
-                time.sleep(0.5)
+                wait = min(30, 0.5 * (2 ** attempt))
+                time.sleep(wait)
                 continue
 
         return None
