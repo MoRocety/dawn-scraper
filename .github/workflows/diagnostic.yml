@@ -12,16 +12,16 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install deps
-        run: pip install curl_cffi beautifulsoup4
+        run: pip install cloudscraper beautifulsoup4
       - name: Test request
         run: |
           python3 -c "
-          from curl_cffi import requests
+          from cloudscraper import create_scraper
           from bs4 import BeautifulSoup
           import json
 
-          r = requests.get('https://www.dawn.com/newspaper/front-page/2025-07-23',
-                           impersonate='chrome120', timeout=15)
+          scraper = create_scraper()
+          r = scraper.get('https://www.dawn.com/newspaper/front-page/2025-07-23', timeout=15)
           print(f'Status: {r.status_code}')
           print(f'Size: {len(r.text)}')
           soup = BeautifulSoup(r.text, 'lxml')

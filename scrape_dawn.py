@@ -15,7 +15,7 @@ from collections import defaultdict, OrderedDict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import urljoin
 
-from curl_cffi import requests
+from cloudscraper import create_scraper
 from bs4 import BeautifulSoup
 from tqdm import tqdm
 
@@ -57,8 +57,6 @@ SECTIONS = OrderedDict([
     ("Latest News",                "latest-news"),
 ])
 
-IMPERSONATIONS = ["chrome120", "chrome110", "edge99", "safari15"]
-
 logging.basicConfig(level=logging.WARNING,
                     format="%(asctime)s  %(levelname)s  %(message)s",
                     datefmt="%H:%M:%S")
@@ -75,6 +73,9 @@ class DawnScraper:
         self.proxy = proxy
         self.max_per_day = max_per_day
         self._lock = threading.Lock()
+        self._scraper = create_scraper(
+            browser={'custom': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
+        )
 
         sfx = f"_{suffix}" if suffix else ""
         self.cache_file = os.path.join(CACHE_DIR, f"articles{sfx}.json")
@@ -108,30 +109,21 @@ class DawnScraper:
     # ── network ──────────────────────────────────────────────────────
 
     def _fetch(self, url, timeout=15):
-        """Exponential backoff on 429/403 — fast initial retry, longer waits if persistent."""
+        """Cloudscraper with JS challenge solving + exponential backoff on 429/403."""
         for attempt in range(20):
-            impersonate = IMPERSONATIONS[attempt % len(IMPERSONATIONS)]
             try:
-                resp = requests.get(url, timeout=timeout,
-                                    impersonate=impersonate, proxy=self.proxy)
-
+                resp = self._scraper.get(url, timeout=timeout)
                 if resp.status_code == 200:
                     return resp
-
                 if resp.status_code in (429, 403, 502, 503, 504):
                     wait = min(30, 0.5 * (2 ** attempt) + random.uniform(0, 0.5))
-                    logger.debug("Retry %d/%d %s — sleep %.1fs",
-                                 attempt + 1, 20, resp.status_code, wait)
                     time.sleep(wait)
                     continue
-
-                return None  # 404, 410, etc.
-
+                return None
             except Exception:
                 wait = min(30, 0.5 * (2 ** attempt))
                 time.sleep(wait)
                 continue
-
         return None
 
     # ── URL collection ───────────────────────────────────────────────
