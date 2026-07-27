@@ -184,7 +184,7 @@ class DawnScraper:
             self._track_failure(url)
             return None
 
-        soup = BeautifulSoup(resp.text, "lxml")
+        soup = BeautifulSoup(resp.text, "html.parser")
 
         title_el = soup.find("meta", property="og:title")
         title = title_el["content"].strip() if title_el and title_el.get("content") else ""
