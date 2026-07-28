@@ -7,3 +7,8 @@ __pycache__/
 .commandcode/
 check.sh
 C_=1
+gen_cache/
+newspapers_fresh/
+newspapers_fresh.zip
+newspapers_archive/
+_extracted/
