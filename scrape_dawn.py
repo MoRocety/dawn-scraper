@@ -198,7 +198,7 @@ class DawnScraper:
         body_div = soup.select_one(".story__content")
         paragraphs = []
         if body_div:
-            for p in body_div.find_all("p", recursive=False):
+            for p in body_div.find_all("p"):
                 t = p.get_text(strip=True)
                 if t and len(t) > 20:
                     paragraphs.append(t)

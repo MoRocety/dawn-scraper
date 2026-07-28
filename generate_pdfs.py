@@ -17,7 +17,7 @@ from tqdm import tqdm
 from fpdf import FPDF
 
 CACHE_DIR = "cache"
-OUTPUT_DIR = "newspapers"
+OUTPUT_DIR = "newspapers_fresh"
 
 SECTIONS = OrderedDict([
     ("Front Page",                 "newspaper/front-page"),
@@ -195,6 +195,7 @@ def build_sections_data(ds, articles, sections):
 
 
 def main():
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
     import argparse
     p = argparse.ArgumentParser(description="Dawn PDF Generator")
     p.add_argument("--pid", type=int, default=None,
@@ -255,16 +256,24 @@ def main():
     else:
         end_d = date.fromisoformat(max(all_dates))
 
-    logger.info(f"Generating PDFs: {start_d} → {end_d}")
-
-    count = 0
+    all_dates_list = []
     current = start_d
     while current <= end_d:
+        all_dates_list.append(current)
+        current += timedelta(days=1)
+
+    total = len(all_dates_list)
+    logger.info(f"Generating PDFs: {start_d} → {end_d} ({total} days)")
+
+    count = 0
+    pbar = tqdm(all_dates_list, desc="PDFs", unit="day")
+    for current in pbar:
         ds = current.strftime("%Y-%m-%d")
         sections_data = build_sections_data(ds, articles, sections)
+        n = sum(len(v) for v in sections_data.values())
         if generate_pdf(ds, sections_data):
             count += 1
-        current += timedelta(days=1)
+        pbar.set_postfix_str(f"{n} arts | {ds[-5:]}")
 
     logger.info(f"Done — {count} PDFs in '{os.path.abspath(OUTPUT_DIR)}/'")
 
